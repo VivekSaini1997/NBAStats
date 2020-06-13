@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup as bs
 from selenium import webdriver
 import json
 import time
+import tkinter
 
 driver_path = "D:/Desktop/Selenium/chromedriver"
 
@@ -34,74 +35,10 @@ def get_box_with_attempts(driver, attempts=5):
             attempt += 1
     raise IndexError("No Box Found.")
 
-def main2():
-    driver = webdriver.Chrome(executable_path=driver_path)
-
-    driver.get('https://stats.nba.com/players/advanced/')
-
-    # attempts = 0
-    # while attempts < 5:
-    #     try:
-    #         driver.get("https://stats.nba.com/players/advanced/")
-    #         break
-    #     except:
-    #         print('Failed once, retrying after 500ms')
-    #         time.sleep(500)
-    #         attempts += 1
-    # get_with_attempts
-
-
-    # make sure you're looking at all of the players
-    box = driver.find_elements_by_class_name("stats-table-pagination__select")[0]
-    box.send_keys('All')
-
-    # find the players
-    # players = driver.find_elements_by_class_name('player')
-    # print(players[0].text, players[1].text)
-    # playertexts = [ p.text for p in players ]
-    # for player in playertexts:
-    #     print(player)
-    # print(len(playertexts))
-
-    # maybe find the entire row instead?
-    row = driver.find_elements_by_css_selector("tr[data-ng-repeat]")
-    
-    # also find the row that specifies the row?
-    names = driver.find_elements_by_css_selector("th[cf]")
-    # the elements duplicate, we only need the first half of the list
-    row = row[:len(row)//2]
-
-    # for elem in row:
-    #     print(elem.text)
-
-    header2 = [n.text for n in names][1:-2]
-
-    # for name in names:
-    
-    playerdict = dict()
-
-    # create a dict of dicts for all of the players
-    # indexed by player name first
-    # then a specific stat for said player 
-    for player in row:
-        smth = player.text.split('\n')
-        print(smth[2])
-        playerdict[smth[1]] = dict(zip(header2, smth[2].split(' ')))
-
-    # now try to load the traditional stats
-
-    # with open('NBA2019_2020_adv.json', 'w+') as f:
-    #     json.dump(playerdict, f)
-    # print(row[0].text.split('\n')[2])
-    
 # because i don't feel like scraping every single time, load in results from API from time to time
 def main3():
     # load in the files
     pass
-# load in the advanced stats for a given year
-def load_adv(year):
-
-    return
 
 # load in the stats for all the players in a given year
 # goes through all of specified categories to do this
@@ -144,13 +81,36 @@ def load_urls(driver, year, categories):
     with open('NBAStats{}{}Agg.json'.format(year, year+1), 'w+') as fp:
         json.dump(player_stats_dict, fp)
 
-if __name__ == "__main__":
-    categories = [
-        'traditional',
-        'advanced',
-        ]
-    driver = webdriver.Chrome(executable_path=driver_path)
-    driver.implicitly_wait(15)
-    years = reversed(range(1996, 1998))
+# load the stats from a set of JSON files
+# specify the years you want with a range(startyear, endyear)
+# and the directory where the files are located
+def load_agg_jsons(years, dir='.'):
+    return_dict = dict()
     for year in years:
-        load_urls(driver, year, categories)
+        with open('NBAStats{}{}Agg.json'.format(year, year+1), 'r') as fp:
+            return_dict['{}-{}'.format(year, year+1)] = json.load(fp)
+    return return_dict
+
+# test main function
+# loads in the dictionary and then does stuff
+# pick two stats and it'll plot everyone against them
+def test1():
+    full_stats_dict = load_agg_jsons(range(1996, 2020))
+    
+
+
+if __name__ == "__main__":
+    mode = 1
+    if mode == 0:
+    # code to run the scraper
+        categories = [
+            'traditional',
+            'advanced',
+            ]
+        driver = webdriver.Chrome(executable_path=driver_path)
+        driver.implicitly_wait(15)
+        years = reversed(range(1996, 1998))
+        for year in years:
+            load_urls(driver, year, categories)
+    elif mode == 1:
+        returned_dict = load_agg_jsons(range(1996, 2020))
