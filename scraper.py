@@ -8,8 +8,45 @@ from selenium import webdriver
 import json
 import time
 import tkinter
+from matplotlib import pyplot as plt
+
 
 driver_path = "D:/Desktop/Selenium/chromedriver"
+
+team_colors = {
+    # interior exterior
+    'SEA': ('#FFC200', '#00653A'),
+    'ATL': ('#FFFFFF', '#e03a3e'),
+    'BKN': ('#00a55c', '#000000'),
+    'BOS': ('#FFFFFF', '#000000'),
+    'CHA': ('#00788c ','#1d1160'),
+    'CHI': ('#CE1141', '#000000'),
+    'CLE': ('#6f2633', '#ffb81c'),
+    'DAL': ('#', '#'),
+    'DEN': ('#', '#'),
+    'DET': ('#', '#'),
+    'GSW': ('#', '#'),
+    'HOU': ('#', '#'),
+    'IND': ('#', '#'),
+    'LAC': ('#', '#'),
+    'LAL': ('#', '#'),
+    'MEM': ('#', '#'),
+    'MIA': ('#', '#'),
+    'MIL': ('#', '#'),
+    'MIN': ('#', '#'),
+    'NOP': ('#', '#'),
+    'NYK': ('#', '#'),
+    'OKC': ('#', '#'),
+    'ORL': ('#', '#'),
+    'PHI': ('#', '#'),
+    'PHX': ('#', '#'),
+    'POR': ('#', '#'),
+    'SAC': ('#', '#'),
+    'SAS': ('#', '#'),
+    'TOR': ('#', '#'),
+    'UTA': ('#', '#'),
+    'WAS': ('#', '#'),
+}
 
 # just test the request first
 def main():
@@ -84,10 +121,10 @@ def load_urls(driver, year, categories):
 # load the stats from a set of JSON files
 # specify the years you want with a range(startyear, endyear)
 # and the directory where the files are located
-def load_agg_jsons(years, dir='.'):
+def load_agg_jsons(years=range(1996, 2020), directory='fixed_json'):
     return_dict = dict()
     for year in years:
-        with open('NBAStats{}{}Agg.json'.format(year, year+1), 'r') as fp:
+        with open('{}/NBAStats{}{}Agg.json'.format(directory, year, year+1), 'r') as fp:
             return_dict['{}-{}'.format(year, year+1)] = json.load(fp)
     return return_dict
 
@@ -95,12 +132,62 @@ def load_agg_jsons(years, dir='.'):
 # loads in the dictionary and then does stuff
 # pick two stats and it'll plot everyone against them
 def test1():
-    full_stats_dict = load_agg_jsons(range(1996, 2020))
-    
+    full_stats_dict = load_agg_jsons(range(1996, 2020), 'fixed_json')
+
+    # our test is 1996-1997 season, DREB vs OREB
+    season_dict = full_stats_dict['1996-1997']
+    dreb = list()
+    oreb = list()
+    name = list()
+    # plotting code
+    for player in season_dict:
+        player_dict = season_dict[player]
+        dreb.append(player_dict['DREB'])
+        oreb.append(player_dict['OREB'])
+        name.append(player)
+ 
+    fig, ax = plt.subplots()
+    sc = plt.scatter(dreb, oreb)
+    plt.show()
+
+
+
+# make it so that numeric stats are represented as such
+# instead of as strings in the json files
+def fix_json():
+    years = range(1996, 2020)
+    for year in years:
+        fname = 'NBAStats{}{}Agg.json'.format(year, year+1)
+        with open(fname, 'r') as readfile:
+            dict_ = json.load(readfile)
+        for player in dict_:
+            for stat in dict_[player]:
+                try:
+                    dict_[player][stat] = float(dict_[player][stat])
+                except:
+                    pass
+        with open('fixed_json/{}'.format(fname), 'w+') as writefile:
+            json.dump(dict_, writefile)
+
+#list all of the teams in the 2019-20 season
+def list_new_teams():
+    teams = list()
+    stats = load_agg_jsons()
+
+    stats = stats['2019-2020']
+    for player in stats:
+        teams.append(stats[player]['TEAM'])
+
+    teams = list(set(teams))
+    for team in sorted(teams):
+        print('\'{}\': (\'#\', \'#\'),'.format(team))
+    print(len(teams))
+
+
 
 
 if __name__ == "__main__":
-    mode = 1
+    mode = 4
     if mode == 0:
     # code to run the scraper
         categories = [
@@ -114,3 +201,10 @@ if __name__ == "__main__":
             load_urls(driver, year, categories)
     elif mode == 1:
         returned_dict = load_agg_jsons(range(1996, 2020))
+        print(returned_dict['1996-1997']['Dennis Rodman'])
+    elif mode == 2:
+        fix_json()
+    elif mode == 3:
+        test1()
+    elif mode == 4:
+        list_new_teams()
