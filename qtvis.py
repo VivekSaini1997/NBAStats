@@ -7,6 +7,7 @@ import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
     QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox
 from PyQt5.QtCore import QMetaObject, Qt
+from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
 import pyqtgraph as pg
 import scraper
@@ -62,9 +63,23 @@ class MyWindow(QMainWindow):
 
     def initScatterPlot(self):
         self.scatterwidget = pg.GraphicsLayoutWidget()
-        self.scatter = self.scatterwidget.addPlot()
-        self.s2 = pg.ScatterPlotItem(size=10, pen=pg.mkPen('w'), pxMode=True)
-        self.scatter.addItem(self.s2)
+        self.scatterplot = self.scatterwidget.addPlot()
+        self.scatterplotitem = pg.ScatterPlotItem(size=10, pen=pg.mkPen('w'), pxMode=True)
+        self.scatterplot.addItem(self.scatterplotitem)
+        self.lastpointedat = None
+
+        # Tooltip stuff
+        # TODO: maybe make a seperate class?
+        self.scatterlabel = QLabel(self.scatterwidget)
+        self.scatterpixmap = QPixmap('logos/TOR.gif')
+        self.scatterpainter = QPainter(self.scatterpixmap)
+        self.scatterpainter.drawRect(5, 5, 140, 90)
+        self.scatterlabel.setPixmap(self.scatterpixmap)
+        self.scatterlabel.setVisible(False)
+        self.scatterlabel.setAlignment(Qt.AlignCenter)
+        self.scatterpainter.end()
+
+        self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
 
     def initComboBoxes(self):
         # create two comboboxes
@@ -100,22 +115,69 @@ class MyWindow(QMainWindow):
         self.previouslindex = self.lcombobox.currentIndex()
         self.previousbindex = self.bcombobox.currentIndex()
 
+        self.drawPoints()
+
+    # on hover, update the item's tooltip
+    # TODO: update this
+    def onHover(self, pos):
+        act_pos = self.scatterplotitem.mapFromScene(pos)
+        p1 = self.scatterplotitem.pointsAt(act_pos)
+        if p1:
+            data = p1[0].data()
+            player = data['player']
+            stats = data['stats']
+            # load the right team logo
+            self.scatterpixmap = QPixmap('logos/{}.gif'.format(stats['TEAM']))
+            self.scatterpainter = QPainter(self.scatterpixmap)
+
+            # draw a translucent black overlay to darken the image
+            self.scatterpainter.drawRect(0, 0, 150, 100)
+            self.scatterpainter.fillRect(0, 0, 150, 100, QColor(0, 0, 0, 220))
+            # write some text in white
+            self.scatterpainter.setPen(QColor(255, 255, 255))
+            self.scatterpainter.drawText(5, 20, '{}'.format(player))
+            stat1 = self.lcombobox.currentText()
+            stat2 = self.bcombobox.currentText()
+            self.scatterpainter.drawText(5, 20 + 20, '{}: {}'.format(stat1, stats[stat1]))
+            self.scatterpainter.drawText(5, 20 + 36, '{}: {}'.format(stat2, stats[stat2]))
+            self.scatterpainter.end()
+            # draw the box to the mouse location
+            self.scatterlabel.setPixmap(self.scatterpixmap)
+            # to the left of the cursor if near the edge of the window
+            # TODO: stop hardcoding the logo width and height
+            if pos.x() > self.size().width() - 260:
+                self.scatterlabel.setGeometry(pos.x() - 160, pos.y(), 150, 100)
+            else:
+                self.scatterlabel.setGeometry(pos.x() + 10, pos.y(), 150, 100)
+            self.scatterlabel.setVisible(True)
+            if self.lastpointedat is not None:
+                self.lastpointedat.setSize(10)
+            p1[0].setSize(20)
+            self.lastpointedat = p1[0]
+        else:
+            self.scatterlabel.setVisible(False)
+            if self.lastpointedat is not None:
+                self.lastpointedat.setSize(10)
+            self.lastpointedat = None
+
     # draw the points depending on what categories are selected
     def drawPoints(self):
         ltext = self.lcombobox.currentText()
         btext = self.bcombobox.currentText()
 
+        # clear items before drawing
+        self.scatterplotitem.clear()
         self.spots = [ {
             # add a tiny bit of variance to the x and y so that they don't overlap
-            'x': self.stats[player][ltext] + np.random.randn()/100, 
-            'y': self.stats[player][btext] + np.random.randn()/100, 
+            'x': self.stats[player][btext] + np.random.randn()/100, 
+            'y': self.stats[player][ltext] + np.random.randn()/100, 
             'brush': np.random.randint(0, 255),
             'size': 10,
             'symbol': np.random.randint(0, 5),
             'data': {'player': player, 'stats': self.stats[player]}
             } for player in self.stats ]
 
-        self.s2.addPoints(self.spots)
+        self.scatterplotitem.addPoints(self.spots)
         pass
 
     # actually add widgets to the layout
