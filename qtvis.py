@@ -11,6 +11,8 @@ from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
 import pyqtgraph as pg
 import scraper
+import json
+import os
 
 msgs = [
     'YOU FOOL',
@@ -36,13 +38,33 @@ class MyWindow(QMainWindow):
 
     def __init__(self):
         super(MyWindow, self).__init__()
-        self.stats = scraper.load_agg_jsons(range(2019, 2020), 'fixed_json')['2019-2020']
+        self.allstats = scraper.load_agg_jsons(range(1996, 2020), 'fixed_json')
+        self.readSettingsFile()
+        self.selectSeason()
         self.initGUI()
+
+    # load a specified year's dataset from the default dict
+    def selectSeason(self):
+        season = self.defaultvals['season']
+        self.stats = self.allstats[season]
+
+    # read in a settings file and use that to determine the starting stats 
+    def readSettingsFile(self, filepath='settings.json'):
+        if os.path.isfile(filepath):
+            with open(filepath) as settingsfile:
+                self.defaultvals = json.load(settingsfile)
+        else: 
+            self.defaultvals = {'season': '2019-2020', 'xstat': 'PTS', 'ystat': 'AST'}
+
+    # write the current settings to the file 
+    def writeSettingsFile(self, filepath='settings.json'):
+        with open(filepath, 'w+') as settingsfile:
+            json.dump(self.defaultvals, settingsfile)
 
     def initGUI(self):
         # set the window geometry 
         self.setGeometry(100, 100, 1280, 800)
-        self.setWindowTitle("Tech With Tim")
+        self.setWindowTitle("NBA Stats")
         self.setStyleSheet("QMainWindow { background-color: #181818; } QLabel{ color: #c0c0c0; }")
 
 
@@ -56,7 +78,6 @@ class MyWindow(QMainWindow):
         self.drawPoints()
         self.manageLayout()
 
-        # self.grid.setRowMinimumHeight(1)
         self.mainWidget.setLayout(self.grid)
 
         self.initMenuBar()
@@ -81,31 +102,69 @@ class MyWindow(QMainWindow):
 
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
 
-    def initComboBoxes(self):
+    def initStatComboBoxes(self):
         # create two comboboxes
         # one on the left and one on the bottom
         self.lcombobox = QComboBox(self)
         self.bcombobox = QComboBox(self)
+        self.bcombobox.setFixedWidth(80)
+        self.lcombobox.setFixedWidth(80)
         
+        # this is a fancy way of extracting the names of the stats
+        # neccessary because of how the jsons are formatted
         for elem in list(self.stats[next(iter(self.stats))])[1:]:
             self.lcombobox.addItem(elem)
             self.bcombobox.addItem(elem)
 
-        self.lcombobox.setCurrentIndex(0)
-        self.bcombobox.setCurrentIndex(1)
+        # use the values from the settings file to determine the 
+        # starting values for the boxes
+        lindex = self.lcombobox.findText(self.defaultvals['ystat'])
+        bindex = self.lcombobox.findText(self.defaultvals['xstat'])
+
+        self.lcombobox.setCurrentIndex(lindex)
+        self.bcombobox.setCurrentIndex(bindex)
         # keep track of previous indicies
         self.previouslindex = self.lcombobox.currentIndex()
         self.previousbindex = self.bcombobox.currentIndex()
 
-        self.bcombobox.setFixedWidth(80)
-        self.lcombobox.setFixedWidth(80)
+        self.bcombobox.currentIndexChanged.connect(self.onStatSelect)
+        self.lcombobox.currentIndexChanged.connect(self.onStatSelect)
 
-        self.bcombobox.currentIndexChanged.connect(self.onSelect)
-        self.lcombobox.currentIndexChanged.connect(self.onSelect)
+    # intialize the combo box that's used to select the year for the dataset
+    def initYearComboBox(self):
+        # create the combobox and populate
+        self.ycombobox = QComboBox(self)
+        for year in range(1996, 2020):
+            self.ycombobox.addItem("{}-{}".format(year, year+1))
 
-    # on select, check that the two indicies are equal
+        self.ycombobox.setFixedWidth(80)
+
+        # default to the latest year
+        yindex = self.ycombobox.findText(self.defaultvals['season'])
+        self.ycombobox.setCurrentIndex(yindex)
+        self.ycombobox.currentIndexChanged.connect(self.onYearSelect)
+
+    def initComboBoxes(self):
+        self.initStatComboBoxes()
+        self.initYearComboBox()
+
+    # on year select, change the dataset, then draw the points
+    def onYearSelect(self):
+        self.stats = self.allstats[self.ycombobox.currentText()]
+        self.drawPoints()
+        # update the default vals dict for when settings are written to file
+        self.defaultvals['season'] = self.ycombobox.currentText()
+
+    # write to the settings file on close
+    def closeEvent(self, event):
+        self.writeSettingsFile()
+        super().closeEvent(event)
+
+
+    # on stat select, check that the two indicies are equal
     # if they are, do a swap
-    def onSelect(self):
+    # then draw the points for the stats 
+    def onStatSelect(self):
         if self.lcombobox.currentIndex() == self.bcombobox.currentIndex():
             if self.sender() == self.lcombobox:
                 self.bcombobox.setCurrentIndex(self.previouslindex)
@@ -116,6 +175,17 @@ class MyWindow(QMainWindow):
         self.previousbindex = self.bcombobox.currentIndex()
 
         self.drawPoints()
+        # update the defaultvals as well 
+        self.defaultvals['xstat'] = self.bcombobox.currentText()
+        self.defaultvals['ystat'] = self.lcombobox.currentText()
+
+    # load in all of the teams logos from the logos directory
+    # used to save precious file I/O
+    def loadLogos(self, logodir='logos/'):
+        self.teampixmaps = dict()
+        for filename in os.listdir(logodir):
+            if filename.endswith('.gif'):
+                self.teampixmaps[filename[:3]] = QPixmap(logodir + filename)
 
     # on hover, update the item's tooltip
     # TODO: update this
@@ -160,6 +230,8 @@ class MyWindow(QMainWindow):
                 self.lastpointedat.setSize(10)
             self.lastpointedat = None
 
+
+
     # draw the points depending on what categories are selected
     def drawPoints(self):
         ltext = self.lcombobox.currentText()
@@ -167,26 +239,38 @@ class MyWindow(QMainWindow):
 
         # clear items before drawing
         self.scatterplotitem.clear()
-        self.spots = [ {
-            # add a tiny bit of variance to the x and y so that they don't overlap
-            'x': self.stats[player][btext] + np.random.randn()/100, 
-            'y': self.stats[player][ltext] + np.random.randn()/100, 
-            'brush': np.random.randint(0, 255),
-            'size': 10,
-            'symbol': np.random.randint(0, 5),
-            'data': {'player': player, 'stats': self.stats[player]}
-            } for player in self.stats ]
+        self.spots = list()
+        # not a list comprension to make exception handling a bit easier
+        for player in self.stats:
+            try:
+                self.spots.append({
+                # add a tiny bit of variance to the x and y so that they don't overlap
+                'x': self.stats[player][btext] + np.random.randn()/100, 
+                'y': self.stats[player][ltext] + np.random.randn()/100, 
+                'brush': np.random.randint(0, 255),
+                'size': 10,
+                'symbol': np.random.randint(0, 5),
+                'data': {'player': player, 'stats': self.stats[player]}
+                })
+            except:
+                pass
 
         self.scatterplotitem.addPoints(self.spots)
-        pass
+        
+        # now resize the axes as neccessary to center the graph
+        x = [ p['x'] for p in self.spots ]
+        y = [ p['y'] for p in self.spots ]
+
+        self.scatterplot.setXRange(min(x) - 0.5, max(x) + 0.5)
+        self.scatterplot.setYRange(min(y) - 0.5, max(y) + 0.5)
 
     # actually add widgets to the layout
     def manageLayout(self):
-        self.grid.addWidget(self.lcombobox, 0, 0)
-        self.grid.addWidget(self.scatterwidget, 0, 1)
+        self.grid.addWidget(self.ycombobox, 0, 1, alignment=Qt.AlignCenter)
+        self.grid.addWidget(self.lcombobox, 1, 0)
+        self.grid.addWidget(self.scatterwidget, 1, 1)
         # self.grid.addWidget(self.b1, 1, 0)
-        self.grid.addWidget(self.bcombobox, 1, 1, alignment=Qt.AlignCenter)
-
+        self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
 
     def initMenuBar(self):
         # create a menubar at the top?
@@ -212,11 +296,6 @@ class MyWindow(QMainWindow):
         QMetaObject.connectSlotsByName(self)
         self.actionNew.triggered.connect(lambda : self.clicked("HELLO"))
 
-    def clicked(self, text):
-        self.label.setText(str(text))
-
-    def button_clicked(self):
-        self.b1.setText(msgs[random.randrange(0, len(msgs))])
 
 def displayWindow():
     app = QApplication([])
