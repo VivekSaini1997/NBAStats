@@ -71,15 +71,12 @@ class MyWindow(QMainWindow):
         self.mainWidget = QWidget(self)
         self.setCentralWidget(self.mainWidget)
         # create a grid layout
-        self.grid = QGridLayout()
 
         self.initComboBoxes()
         self.initScatterPlot()
+        self.initStatLabel()
         self.drawPoints()
         self.manageLayout()
-
-        self.mainWidget.setLayout(self.grid)
-
         self.initMenuBar()
 
     def initScatterPlot(self):
@@ -253,24 +250,45 @@ class MyWindow(QMainWindow):
                 'data': {'player': player, 'stats': self.stats[player]}
                 })
             except:
-                pass
+                print(player)
 
         self.scatterplotitem.addPoints(self.spots)
         
         # now resize the axes as neccessary to center the graph
-        x = [ p['x'] for p in self.spots ]
-        y = [ p['y'] for p in self.spots ]
+        self.x = np.array([ p['x'] for p in self.spots ])
+        self.y = np.array([ p['y'] for p in self.spots ])
 
-        self.scatterplot.setXRange(min(x) - 0.5, max(x) + 0.5)
-        self.scatterplot.setYRange(min(y) - 0.5, max(y) + 0.5)
+        self.scatterplot.setXRange(min(self.x) - 0.5, max(self.x) + 0.5)
+        self.scatterplot.setYRange(min(self.y) - 0.5, max(self.y) + 0.5)
+
+        # also update the stats while we're here
+        self.updateStats()
 
     # actually add widgets to the layout
+    # all the layout management is done here to make changing the layout ezpz
     def manageLayout(self):
+        self.grid = QGridLayout()
         self.grid.addWidget(self.ycombobox, 0, 1, alignment=Qt.AlignCenter)
         self.grid.addWidget(self.lcombobox, 1, 0)
         self.grid.addWidget(self.scatterwidget, 1, 1)
-        # self.grid.addWidget(self.b1, 1, 0)
         self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
+        self.grid.addWidget(self.statlabel, 3, 0, 1, 2)
+        self.mainWidget.setLayout(self.grid)
+
+
+    # update the statistical information for the current dataset
+    def updateStats(self):
+        self.meanx = np.mean(self.x)
+        self.meany = np.mean(self.y)
+        self.varx = np.var(self.x)
+        self.vary = np.var(self.y)
+        self.statlabel.setText("Mean in {0}: {2}\nMean in {1}: {3}\nVariance in {0}: {4}\nVariance in {1}: {5}\n".format(
+            self.bcombobox.currentText(), self.lcombobox.currentText(), self.meanx, self.meany, self.varx, self.vary
+        ))
+
+    # initialize the stats label
+    def initStatLabel(self):
+        self.statlabel = QLabel(self)
 
     def initMenuBar(self):
         # create a menubar at the top?
