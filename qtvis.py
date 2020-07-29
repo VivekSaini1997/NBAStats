@@ -14,23 +14,45 @@ import scraper
 import json
 import os
 
-msgs = [
-    'YOU FOOL',
-    'YOU IMBECILE',
-    'YOU INGRATE',
-    'YOU SIMPLETON',
-    'YOU NEMATODE'
-]
+# a class to encompass the tooltip displayed on hover of an element
+# sublclasses QLabel to make life as easy as possible
+# also optionally takes in the a dict of team logos
+class Tooltip(QLabel):
+    def __init__(self, widget, logos=dict(), *args, **kwargs):
+        super().__init__(widget, *args, **kwargs)
+        # init the pixmap, painter, and label
+        self.pixmap = QPixmap('logos/TOR.gif')
+        self.painter = QPainter(self.pixmap)
+        self.painter.drawRect(5, 5, 140, 90)
+        self.setPixmap(self.pixmap)
+        self.setVisible(False)
+        self.setAlignment(Qt.AlignCenter)
+        self.painter.end()
+    
+    # update the tooltip based on the player's data
+    # including the name of the player and their stats
+    # also pass in the names of the stats to be displayed and the cursor pos
+    def update(self, data, statnames):
+        player = data['player']
+        stats = data['stats']
+        # load the right team logo
+        self.pixmap = QPixmap('logos/{}.gif'.format(stats['TEAM']))
+        self.painter = QPainter(self.pixmap)
 
-list_ = [
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'g'
-]
+        # draw a translucent black overlay to darken the image
+        self.painter.drawRect(0, 0, 150, 100)
+        self.painter.fillRect(0, 0, 150, 100, QColor(0, 0, 0, 220))
+        # write some text in white
+        self.painter.setPen(QColor(255, 255, 255))
+        self.painter.drawText(5, 20, '{}'.format(player))
+        stat1, stat2 = statnames
+        self.painter.drawText(5, 20 + 20, '{}: {}'.format(stat1, stats[stat1]))
+        self.painter.drawText(5, 20 + 36, '{}: {}'.format(stat2, stats[stat2]))
+        self.painter.end()
+        # set the tooltip to be visible
+        self.setPixmap(self.pixmap)
+        self.setVisible(True)
+
 
 # my window subclasses QMainWindow
 # needs to in order to access the methods associated with the main window
@@ -87,15 +109,7 @@ class MyWindow(QMainWindow):
         self.lastpointedat = None
 
         # Tooltip stuff
-        # TODO: maybe make a seperate class?
-        self.scatterlabel = QLabel(self.scatterwidget)
-        self.scatterpixmap = QPixmap('logos/TOR.gif')
-        self.scatterpainter = QPainter(self.scatterpixmap)
-        self.scatterpainter.drawRect(5, 5, 140, 90)
-        self.scatterlabel.setPixmap(self.scatterpixmap)
-        self.scatterlabel.setVisible(False)
-        self.scatterlabel.setAlignment(Qt.AlignCenter)
-        self.scatterpainter.end()
+        self.scattertooltip = Tooltip(self.scatterwidget)
 
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
 
@@ -191,38 +205,21 @@ class MyWindow(QMainWindow):
         p1 = self.scatterplotitem.pointsAt(act_pos)
         if p1:
             data = p1[0].data()
-            player = data['player']
-            stats = data['stats']
-            # load the right team logo
-            self.scatterpixmap = QPixmap('logos/{}.gif'.format(stats['TEAM']))
-            self.scatterpainter = QPainter(self.scatterpixmap)
-
-            # draw a translucent black overlay to darken the image
-            self.scatterpainter.drawRect(0, 0, 150, 100)
-            self.scatterpainter.fillRect(0, 0, 150, 100, QColor(0, 0, 0, 220))
-            # write some text in white
-            self.scatterpainter.setPen(QColor(255, 255, 255))
-            self.scatterpainter.drawText(5, 20, '{}'.format(player))
-            stat1 = self.lcombobox.currentText()
-            stat2 = self.bcombobox.currentText()
-            self.scatterpainter.drawText(5, 20 + 20, '{}: {}'.format(stat1, stats[stat1]))
-            self.scatterpainter.drawText(5, 20 + 36, '{}: {}'.format(stat2, stats[stat2]))
-            self.scatterpainter.end()
+            statnames = (self.lcombobox.currentText(), self.bcombobox.currentText())
+            self.scattertooltip.update(data, statnames)        
             # draw the box to the mouse location
-            self.scatterlabel.setPixmap(self.scatterpixmap)
             # to the left of the cursor if near the edge of the window
             # TODO: stop hardcoding the logo width and height
             if pos.x() > self.size().width() - 260:
-                self.scatterlabel.setGeometry(pos.x() - 160, pos.y(), 150, 100)
+                self.scattertooltip.setGeometry(pos.x() - 160, pos.y(), 150, 100)
             else:
-                self.scatterlabel.setGeometry(pos.x() + 10, pos.y(), 150, 100)
-            self.scatterlabel.setVisible(True)
+                self.scattertooltip.setGeometry(pos.x() + 10, pos.y(), 150, 100)
             if self.lastpointedat is not None:
                 self.lastpointedat.setSize(10)
             p1[0].setSize(20)
             self.lastpointedat = p1[0]
         else:
-            self.scatterlabel.setVisible(False)
+            self.scattertooltip.setVisible(False)
             if self.lastpointedat is not None:
                 self.lastpointedat.setSize(10)
             self.lastpointedat = None
