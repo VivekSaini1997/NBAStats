@@ -183,11 +183,40 @@ def list_new_teams():
         print('\'{}\': (\'#\', \'#\'),'.format(team))
     print(len(teams))
 
-
+# return a json that gets the description of each stat
+def get_stats_glossary():
+    driver = webdriver.Chrome(executable_path=driver_path)
+    driver.implicitly_wait(15)
+    url = "https://stats.nba.com/help/glossary"
+    driver.get(url)
+    # get each stat
+    stats = driver.find_elements_by_class_name('stats-glossary-page__item')
+    vals = list()
+    for stat in stats:
+        stat_lines = stat.text.split('\n')
+        d = dict()
+        d['Abbreviation'] = stat_lines[0]
+        d['Name'] = ''
+        d['Definition'] = ''
+        d['Type'] = ''
+        d['Contexts'] = list()
+        _type = ''
+        for word in stat_lines[1].split():
+            if word in ['Name', 'Definition', 'Type', 'Contexts']:
+                _type = word
+            elif _type == 'Contexts':
+                d['Contexts'].append(word)
+            else:
+                d[_type] += '{} '.format(word)
+        # print('-----')
+        vals.append(d)
+    with open("Stats.json", 'w+') as f:
+        json.dump(vals, f)
+    print('All done')
 
 
 if __name__ == "__main__":
-    mode = 4
+    mode = 5
     if mode == 0:
     # code to run the scraper
         categories = [
@@ -208,3 +237,5 @@ if __name__ == "__main__":
         test1()
     elif mode == 4:
         list_new_teams()
+    elif mode == 5:
+        get_stats_glossary()
