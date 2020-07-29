@@ -5,7 +5,7 @@ import scraper
 import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
-    QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox
+    QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout
 from PyQt5.QtCore import QMetaObject, Qt
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
@@ -16,18 +16,15 @@ import os
 
 # a class to encompass the tooltip displayed on hover of an element
 # sublclasses QLabel to make life as easy as possible
-# also optionally takes in the a dict of team logos
+# also takes in the a dict of team logos for faster computation
 class Tooltip(QLabel):
-    def __init__(self, widget, logos=dict(), *args, **kwargs):
+    def __init__(self, widget, logos, *args, **kwargs):
         super().__init__(widget, *args, **kwargs)
         # init the pixmap, painter, and label
-        self.pixmap = QPixmap('logos/TOR.gif')
-        self.painter = QPainter(self.pixmap)
-        self.painter.drawRect(5, 5, 140, 90)
-        self.setPixmap(self.pixmap)
-        self.setVisible(False)
+        self.logos = logos
+        self.pixmap = None
+        self.painter = None
         self.setAlignment(Qt.AlignCenter)
-        self.painter.end()
     
     # update the tooltip based on the player's data
     # including the name of the player and their stats
@@ -36,7 +33,7 @@ class Tooltip(QLabel):
         player = data['player']
         stats = data['stats']
         # load the right team logo
-        self.pixmap = QPixmap('logos/{}.gif'.format(stats['TEAM']))
+        self.pixmap = self.logos[stats['TEAM']].copy()
         self.painter = QPainter(self.pixmap)
 
         # draw a translucent black overlay to darken the image
@@ -63,6 +60,8 @@ class MyWindow(QMainWindow):
         self.allstats = scraper.load_agg_jsons(range(1996, 2020), 'fixed_json')
         self.readSettingsFile()
         self.selectSeason()
+        self.loadLogos()
+        self.loadStatHelp()
         self.initGUI()
 
     # load a specified year's dataset from the default dict
@@ -92,11 +91,12 @@ class MyWindow(QMainWindow):
 
         self.mainWidget = QWidget(self)
         self.setCentralWidget(self.mainWidget)
-        # create a grid layout
 
+        # init everything then draw
         self.initComboBoxes()
         self.initScatterPlot()
         self.initStatLabel()
+        self.initStatHelpButtons()
         self.drawPoints()
         self.manageLayout()
         self.initMenuBar()
@@ -109,7 +109,7 @@ class MyWindow(QMainWindow):
         self.lastpointedat = None
 
         # Tooltip stuff
-        self.scattertooltip = Tooltip(self.scatterwidget)
+        self.scattertooltip = Tooltip(self.scatterwidget, self.teampixmaps)
 
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
 
@@ -266,11 +266,27 @@ class MyWindow(QMainWindow):
     def manageLayout(self):
         self.grid = QGridLayout()
         self.grid.addWidget(self.ycombobox, 0, 1, alignment=Qt.AlignCenter)
-        self.grid.addWidget(self.lcombobox, 1, 0)
+        # self.grid.addWidget(self.lcombobox, 1, 0)
         self.grid.addWidget(self.scatterwidget, 1, 1)
-        self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
+        # self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
         self.grid.addWidget(self.statlabel, 3, 0, 1, 2)
+        
+        self.lhbox = QHBoxLayout()
+        # self.lhbox.addStretch(1)
+        self.lhbox.addWidget(self.lcombobox)
+        self.lhbox.addWidget(self.lhelpbtn)
+
+        self.bhbox = QHBoxLayout()
+        # self.bhbox.addStretch(1)
+        self.bhbox.addWidget(self.bcombobox)
+        self.bhbox.addWidget(self.bhelpbtn)
+
+        self.grid.addLayout(self.lhbox, 1, 0)
+        self.grid.addLayout(self.bhbox, 2, 1, alignment=Qt.AlignCenter)
+
         self.mainWidget.setLayout(self.grid)
+
+
 
 
     # update the statistical information for the current dataset
@@ -311,6 +327,26 @@ class MyWindow(QMainWindow):
         QMetaObject.connectSlotsByName(self)
         self.actionNew.triggered.connect(lambda : self.clicked("HELLO"))
 
+    # initialize the glossary that stores stat descriptions
+    def loadStatHelp(self, filename='Stats.json'):
+        # load it in first
+        with open(filename) as f:
+            self.statsglossary = json.load(f)
+
+    # initialize the qt buttons to actually get help
+    def initStatHelpButtons(self):
+        self.lhelpbtn = QPushButton('?', self)
+        self.bhelpbtn = QPushButton('?', self)
+
+        # call the show stat help function
+        self.lhelpbtn.clicked.connect(lambda : self.showStatHelp(self.lcombobox.currentText()))
+        self.bhelpbtn.clicked.connect(lambda : self.showStatHelp(self.bcombobox.currentText()))
+
+    # given a stat, show help for it
+    # for now it's gonna print
+    # TODO: integrate into UI
+    def showStatHelp(self, statname):
+        print(self.statsglossary[statname.lower()])
 
 def displayWindow():
     app = QApplication([])

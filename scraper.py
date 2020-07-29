@@ -191,11 +191,10 @@ def get_stats_glossary():
     driver.get(url)
     # get each stat
     stats = driver.find_elements_by_class_name('stats-glossary-page__item')
-    vals = list()
+    vals = dict()
     for stat in stats:
         stat_lines = stat.text.split('\n')
         d = dict()
-        d['Abbreviation'] = stat_lines[0]
         d['Name'] = ''
         d['Definition'] = ''
         d['Type'] = ''
@@ -209,7 +208,7 @@ def get_stats_glossary():
             else:
                 d[_type] += '{} '.format(word)
         # print('-----')
-        vals.append(d)
+        vals[stat_lines[0].lower()] = d
     with open("Stats.json", 'w+') as f:
         json.dump(vals, f)
     print('All done')
