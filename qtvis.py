@@ -5,7 +5,8 @@ import scraper
 import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
-    QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout
+    QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout, \
+    QFrame
 from PyQt5.QtCore import QMetaObject, Qt
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
@@ -25,6 +26,7 @@ class Tooltip(QLabel):
         self.pixmap = None
         self.painter = None
         self.setAlignment(Qt.AlignCenter)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
     
     # update the tooltip based on the player's data
     # including the name of the player and their stats
@@ -49,6 +51,9 @@ class Tooltip(QLabel):
         # set the tooltip to be visible
         self.setPixmap(self.pixmap)
         self.setVisible(True)
+
+    def enterEvent(self, event):
+        self.setVisible(False)
 
 
 # my window subclasses QMainWindow
@@ -95,7 +100,7 @@ class MyWindow(QMainWindow):
         # init everything then draw
         self.initComboBoxes()
         self.initScatterPlot()
-        self.initStatLabel()
+        self.initLabels()
         self.initStatHelpButtons()
         self.drawPoints()
         self.manageLayout()
@@ -270,7 +275,8 @@ class MyWindow(QMainWindow):
         self.grid.addWidget(self.scatterwidget, 1, 1)
         # self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
         self.grid.addWidget(self.statlabel, 3, 0, 1, 2)
-        
+        self.grid.addWidget(self.helplabel, 4, 0, 1, 2)
+
         self.lhbox = QHBoxLayout()
         # self.lhbox.addStretch(1)
         self.lhbox.addWidget(self.lcombobox)
@@ -287,8 +293,6 @@ class MyWindow(QMainWindow):
         self.mainWidget.setLayout(self.grid)
 
 
-
-
     # update the statistical information for the current dataset
     def updateStats(self):
         self.meanx = np.mean(self.x)
@@ -299,9 +303,12 @@ class MyWindow(QMainWindow):
             self.bcombobox.currentText(), self.lcombobox.currentText(), self.meanx, self.meany, self.varx, self.vary
         ))
 
-    # initialize the stats label
-    def initStatLabel(self):
+    # initialize all of the labels
+    def initLabels(self):
         self.statlabel = QLabel(self)
+        self.helplabel = QLabel(self)
+        self.helplabel.setFrameStyle(QFrame.Panel | QFrame.Raised)
+        self.helplabel.setLineWidth(2)
 
     def initMenuBar(self):
         # create a menubar at the top?
@@ -346,7 +353,11 @@ class MyWindow(QMainWindow):
     # for now it's gonna print
     # TODO: integrate into UI
     def showStatHelp(self, statname):
-        print(self.statsglossary[statname.lower()])
+        desc = self.statsglossary[statname.lower()]
+        self.helplabel.setText("Name: {}\nDefinition: {}\nType: {}".format(
+            desc['Name'], desc['Definition'], desc['Type']
+        ))
+    
 
 def displayWindow():
     app = QApplication([])
