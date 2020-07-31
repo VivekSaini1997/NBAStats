@@ -6,8 +6,8 @@ import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
     QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout, \
-    QFrame
-from PyQt5.QtCore import QMetaObject, Qt
+    QFrame, QAbstractItemView
+from PyQt5.QtCore import QMetaObject, Qt, QEvent
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
 import pyqtgraph as pg
@@ -55,6 +55,20 @@ class Tooltip(QLabel):
     def enterEvent(self, event):
         self.setVisible(False)
 
+# a subclass of QComboBox
+# has hover capabilities tied to a label
+# also takes in the stats glossary
+class StatComboBox(QComboBox):
+    
+    def __init__(self, label, statsglossary, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.label = label
+        self.statsglossary = statsglossary
+    
+    def enterEvent(self, event):
+        print(event)
+
+
 
 # my window subclasses QMainWindow
 # needs to in order to access the methods associated with the main window
@@ -86,6 +100,22 @@ class MyWindow(QMainWindow):
     def writeSettingsFile(self, filepath='settings.json'):
         with open(filepath, 'w+') as settingsfile:
             json.dump(self.defaultvals, settingsfile)
+
+    # an event filter to enable hover behaviours
+    def eventFilter(self, src, event):
+        # for a qlabel
+        if src is self.lcombobox or src is self.bcombobox:
+            if event.type() == QEvent.Enter:
+                self.showStatHelp(src.currentText())
+                return True
+            elif event.type() == QEvent.Leave:
+                # self.clearStatHelp()
+                pass
+        # elif src is self.lcombobox.view() or src is self.bcombobox.view():
+        #     print(src.selectionModel())
+
+        return False 
+
 
     def initGUI(self):
         # set the window geometry 
@@ -143,8 +173,21 @@ class MyWindow(QMainWindow):
         self.previouslindex = self.lcombobox.currentIndex()
         self.previousbindex = self.bcombobox.currentIndex()
 
+        # update the scatter plot when you change stats
         self.bcombobox.currentIndexChanged.connect(self.onStatSelect)
         self.lcombobox.currentIndexChanged.connect(self.onStatSelect)
+        # update the help tooltip when you hover over a given 
+        self.lcombobox.installEventFilter(self)
+        self.bcombobox.installEventFilter(self)
+        self.lcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
+        self.bcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
+
+    # display help when a selection in a combobox is hovered
+    def onComboBoxSelect(self, current, previous):
+        combobox = self.sender().parent().parent().parent()
+        statname = combobox.itemText(current.row())
+        self.showStatHelp(statname)
+
 
     # intialize the combo box that's used to select the year for the dataset
     def initYearComboBox(self):
@@ -241,7 +284,7 @@ class MyWindow(QMainWindow):
         self.spots = list()
         # not a list comprension to make exception handling a bit easier
         for player in self.stats:
-            try:
+            try: 
                 self.spots.append({
                 # add a tiny bit of variance to the x and y so that they don't overlap
                 'x': self.stats[player][btext] + np.random.randn()/100, 
@@ -308,6 +351,7 @@ class MyWindow(QMainWindow):
         self.statlabel = QLabel(self)
         self.helplabel = QLabel(self)
         self.helplabel.setFrameStyle(QFrame.Panel | QFrame.Raised)
+        self.helplabel.setText('\n\n')
         self.helplabel.setLineWidth(2)
 
     def initMenuBar(self):
@@ -357,7 +401,10 @@ class MyWindow(QMainWindow):
         self.helplabel.setText("Name: {}\nDefinition: {}\nType: {}".format(
             desc['Name'], desc['Definition'], desc['Type']
         ))
-    
+
+    # now erase the stat help
+    def clearStatHelp(self):
+        self.helplabel.setText("\n\n")
 
 def displayWindow():
     app = QApplication([])
