@@ -124,8 +124,11 @@ def load_urls(driver, year, categories):
 def load_agg_jsons(years=range(1996, 2020), directory='fixed_json'):
     return_dict = dict()
     for year in years:
-        with open('{}/NBAStats{}{}Agg.json'.format(directory, year, year+1), 'r') as fp:
-            return_dict['{}-{}'.format(year, year+1)] = json.load(fp)
+        try:
+            with open('{}/NBAStats{}{}Agg.json'.format(directory, year, year+1), 'r') as fp:
+                return_dict['{}-{}'.format(year, year+1)] = json.load(fp)
+        except:
+            pass
     return return_dict
 
 # test main function
