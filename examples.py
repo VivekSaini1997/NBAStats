@@ -3,8 +3,6 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 from PyQt5.QtGui import QPixmap
 import pyqtgraph as pg 
 import numpy as np
-from PIL import Image
-import cv2
 import pyqtgraph.examples
 
 pyqtgraph.examples.run()
