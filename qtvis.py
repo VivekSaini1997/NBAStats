@@ -55,21 +55,6 @@ class Tooltip(QLabel):
     def enterEvent(self, event):
         self.setVisible(False)
 
-# a subclass of QComboBox
-# has hover capabilities tied to a label
-# also takes in the stats glossary
-class StatComboBox(QComboBox):
-    
-    def __init__(self, label, statsglossary, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.label = label
-        self.statsglossary = statsglossary
-    
-    def enterEvent(self, event):
-        print(event)
-
-
-
 # my window subclasses QMainWindow
 # needs to in order to access the methods associated with the main window
 class MyWindow(QMainWindow):
@@ -111,6 +96,9 @@ class MyWindow(QMainWindow):
             elif event.type() == QEvent.Leave:
                 # self.clearStatHelp()
                 pass
+        else:
+            print(src)
+            print(event)
         # elif src is self.lcombobox.view() or src is self.bcombobox.view():
         #     print(src.selectionModel())
 
@@ -161,6 +149,14 @@ class MyWindow(QMainWindow):
             self.lcombobox.addItem(elem)
             self.bcombobox.addItem(elem)
 
+        # add help tooltips when hovering menu items
+        # TODO: format the tooltips better
+        for i in range(self.lcombobox.count()):
+            if self.lcombobox.itemText(i).lower() in self.statsglossary:
+                desc = self.statsglossary[self.lcombobox.itemText(i).lower()]['Definition']
+                self.lcombobox.setItemData(i, desc, Qt.ToolTipRole)
+                self.bcombobox.setItemData(i, desc, Qt.ToolTipRole)
+
         # use the values from the settings file to determine the 
         # starting values for the boxes
         lindex = self.lcombobox.findText(self.defaultvals['ystat'])
@@ -176,13 +172,14 @@ class MyWindow(QMainWindow):
         self.bcombobox.currentIndexChanged.connect(self.onStatSelect)
         self.lcombobox.currentIndexChanged.connect(self.onStatSelect)
         # update the help tooltip when you hover over a given 
-        self.lcombobox.installEventFilter(self)
-        self.bcombobox.installEventFilter(self)
-        self.lcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
-        self.bcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
+        # self.lcombobox.installEventFilter(self)
+        # self.bcombobox.installEventFilter(self)
+        # self.lcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
+        # self.bcombobox.view().selectionModel().currentChanged.connect(self.onComboBoxSelect)
 
     # display help when a selection in a combobox is hovered
     def onComboBoxSelect(self, current, previous):
+        print(dir(self.sender()))
         combobox = self.sender().parent().parent().parent()
         statname = combobox.itemText(current.row())
         self.showStatHelp(statname)
@@ -271,8 +268,6 @@ class MyWindow(QMainWindow):
                 self.lastpointedat.setSize(10)
             self.lastpointedat = None
 
-
-
     # draw the points depending on what categories are selected
     def drawPoints(self):
         ltext = self.lcombobox.currentText()
@@ -317,17 +312,17 @@ class MyWindow(QMainWindow):
         self.grid.addWidget(self.scatterwidget, 1, 1)
         # self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
         self.grid.addWidget(self.statlabel, 3, 0, 1, 2)
-        self.grid.addWidget(self.helplabel, 4, 0, 1, 2)
+        # self.grid.addWidget(self.helplabel, 4, 0, 1, 2)
 
         self.lhbox = QHBoxLayout()
         # self.lhbox.addStretch(1)
         self.lhbox.addWidget(self.lcombobox)
-        self.lhbox.addWidget(self.lhelpbtn)
+        # self.lhbox.addWidget(self.lhelpbtn)
 
         self.bhbox = QHBoxLayout()
         # self.bhbox.addStretch(1)
         self.bhbox.addWidget(self.bcombobox)
-        self.bhbox.addWidget(self.bhelpbtn)
+        # self.bhbox.addWidget(self.bhelpbtn)
 
         self.grid.addLayout(self.lhbox, 1, 0)
         self.grid.addLayout(self.bhbox, 2, 1, alignment=Qt.AlignCenter)
@@ -396,9 +391,22 @@ class MyWindow(QMainWindow):
     # for now it's gonna print
     # TODO: integrate into UI
     def showStatHelp(self, statname):
+        # get the hovered stats info from the stat glossary
         desc = self.statsglossary[statname.lower()]
+        # now go through every word in the definition and check if it would expand the window
+        # if it would, add a newline character
+        definition = ''
+        metric = self.helplabel.fontMetrics()
+        for word in desc['Definition'].split():
+            if metric.boundingRect('{} {}'.format(definition.split('\n')[-1], word)).width() >= (self.helplabel.width() - 100):
+                definition += '\n{}'.format(word)
+            else:
+                definition += ' {}'.format(word)
+        # print(self.helplabel.width())
+
+        # print(self.helplabel.fontMetrics().boundingRect(desc['Definition']).width())
         self.helplabel.setText("Name: {}\nDefinition: {}\nType: {}".format(
-            desc['Name'], desc['Definition'], desc['Type']
+            desc['Name'], definition, desc['Type']
         ))
 
     # now erase the stat help
