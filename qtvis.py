@@ -145,7 +145,6 @@ class MyWindow(QMainWindow):
 
         # Tooltip stuff
         self.scattertooltip = Tooltip(self.scatterwidget, self.teampixmaps)
-
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
 
     def initStatComboBoxes(self):
@@ -298,7 +297,7 @@ class MyWindow(QMainWindow):
                 print(player)
 
         self.scatterplotitem.addPoints(self.spots)
-        
+
         # now resize the axes as neccessary to center the graph
         self.x = np.array([ p['x'] for p in self.spots ])
         self.y = np.array([ p['y'] for p in self.spots ])
