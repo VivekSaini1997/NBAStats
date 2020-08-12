@@ -4,10 +4,10 @@
 name: Python application
 
 on:
-  push:
-    branches: [  ]
+#   push:
+#     branches: [ master ]
   pull_request:
-    branches: [  ]
+    branches: [ master ]
 
 jobs:
   build:
