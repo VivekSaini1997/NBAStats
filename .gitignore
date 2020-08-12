@@ -105,5 +105,3 @@ dist
 .vscode/settings.json
 settings.json
 *.pyc
-*.pyc
-settings.json
