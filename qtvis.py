@@ -7,7 +7,7 @@ import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
     QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout, \
     QFrame, QAbstractItemView
-from PyQt5.QtCore import QMetaObject, Qt, QEvent
+from PyQt5.QtCore import QMetaObject, Qt, QEvent, QLine
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
 import pyqtgraph as pg
@@ -107,10 +107,14 @@ class MyWindow(QMainWindow):
         self.drawPoints()
         self.manageLayout()
         self.initMenuBar()
-
+   
     def initScatterPlot(self):
         self.scatterwidget = pg.GraphicsLayoutWidget()
         self.scatterplot = self.scatterwidget.addPlot()
+        # init the line for linear regression
+        self.linearregline = pg.InfiniteLine(pos=(10, 10), angle=45)
+        self.scatterplot.addItem(self.linearregline)
+
         self.scatterplotitem = pg.ScatterPlotItem(size=10, pen=pg.mkPen('w'), pxMode=True)
         self.scatterplot.addItem(self.scatterplotitem)
         self.lastpointedat = None
@@ -118,6 +122,16 @@ class MyWindow(QMainWindow):
         # Tooltip stuff
         self.scattertooltip = Tooltip(self.scatterwidget, self.teampixmaps)
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
+
+    # perform linear regression and find a line of best fit
+    def linearRegression(self):
+        # solve for w = [b m], where w = (X'X)^-1 * X'y = pinv(X) * y
+        X = np.vstack((np.ones(np.shape(self.x)), self.x)).T
+        y = np.reshape(self.y, (*np.shape(self.y), 1))
+        self.w = np.matmul(np.linalg.pinv(X), y)
+        # convert into a position and angle representation for infinite line
+        self.linearregline.setPos((0, self.w[0]))
+        self.linearregline.setAngle(np.rad2deg(np.arctan(self.w[1])))
 
     def initStatComboBoxes(self):
         # create two comboboxes
@@ -283,6 +297,8 @@ class MyWindow(QMainWindow):
 
         self.scatterplot.setXRange(min(self.x) - 0.5, max(self.x) + 0.5)
         self.scatterplot.setYRange(min(self.y) - 0.5, max(self.y) + 0.5)
+
+        self.linearRegression()
 
         # also update the stats while we're here
         self.updateStats()
