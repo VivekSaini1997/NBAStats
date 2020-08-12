@@ -61,7 +61,7 @@ class MyWindow(QMainWindow):
 
     def __init__(self):
         super(MyWindow, self).__init__()
-        self.allstats = scraper.load_agg_jsons(range(1996, 2020), 'fixed_json')
+        self.allstats = scraper.load_agg_jsons(range(1996, 2020), 'data/json/stats')
         self.readSettingsFile()
         self.selectSeason()
         self.loadLogos()
@@ -74,7 +74,7 @@ class MyWindow(QMainWindow):
         self.stats = self.allstats[season]
 
     # read in a settings file and use that to determine the starting stats 
-    def readSettingsFile(self, filepath='settings.json'):
+    def readSettingsFile(self, filepath='data/json/settings.json'):
         if os.path.isfile(filepath):
             with open(filepath) as settingsfile:
                 self.defaultvals = json.load(settingsfile)
@@ -82,7 +82,7 @@ class MyWindow(QMainWindow):
             self.defaultvals = {'season': '2019-2020', 'xstat': 'PTS', 'ystat': 'AST'}
 
     # write the current settings to the file 
-    def writeSettingsFile(self, filepath='settings.json'):
+    def writeSettingsFile(self, filepath='data/json/settings.json'):
         with open(filepath, 'w+') as settingsfile:
             json.dump(self.defaultvals, settingsfile)
 
@@ -234,7 +234,7 @@ class MyWindow(QMainWindow):
 
     # load in all of the teams logos from the logos directory
     # used to save precious file I/O
-    def loadLogos(self, logodir='logos/'):
+    def loadLogos(self, logodir='data/logos/'):
         self.teampixmaps = dict()
         for filename in os.listdir(logodir):
             if filename.endswith('.gif'):
@@ -369,7 +369,7 @@ class MyWindow(QMainWindow):
         self.actionNew.triggered.connect(lambda : self.clicked("HELLO"))
 
     # initialize the glossary that stores stat descriptions
-    def loadStatHelp(self, filename='Stats.json'):
+    def loadStatHelp(self, filename='data/json/stat_descriptions.json'):
         # load it in first
         with open(filename) as f:
             self.statsglossary = json.load(f)
