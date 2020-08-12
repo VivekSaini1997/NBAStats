@@ -137,7 +137,7 @@ class MyWindow(QMainWindow):
 
     # perform polynomial regression to find a curve of best fit
     # TODO: maybe leverage numpy more for the polynomial fit
-    def polynomialRegression(self, degree=2):
+    def polynomialRegression(self, degree=1):
         # only on positive degrees
         if degree >= 1:
             X = np.ones((1, *np.shape(self.x)))
@@ -147,12 +147,13 @@ class MyWindow(QMainWindow):
             X = X.T
             # now solve for the polynomial coefficients using the least squares method
             y = np.reshape(self.y, (*np.shape(self.y), 1))
-            w = np.matmul(np.linalg.pinv(X), y)
+            self.w = np.matmul(np.linalg.pinv(X), y)
             # and plot a curve using said coefficients
-            x = np.linspace(min(self.x) - 0.5, max(self.x) + 0.5, 2000)
-            y = np.zeros(2000)
+            resolution = 2000
+            x = np.linspace(*self.scatterplot.viewRange()[0], resolution)
+            y = np.zeros(resolution)
             for n in range(degree+1):
-                y += (w[n] * np.power(x, n))
+                y += (self.w[n] * np.power(x, n))
             # clear the existing polynomial regression line if it exists and plot it
             if self.polyregline:
                 self.scatterplot.removeItem(self.polyregline)
@@ -324,7 +325,7 @@ class MyWindow(QMainWindow):
         self.scatterplot.setXRange(min(self.x) - 0.5, max(self.x) + 0.5)
         self.scatterplot.setYRange(min(self.y) - 0.5, max(self.y) + 0.5)
 
-        # self.linearRegression()
+        # also draw the polynomial of best fit
         self.polynomialRegression(3)
         # also update the stats while we're here
         self.updateStats()
@@ -357,12 +358,19 @@ class MyWindow(QMainWindow):
 
 
     # update the statistical information for the current dataset
+    # this includes the equation for best fit
     def updateStats(self):
         self.meanx = np.mean(self.x)
         self.meany = np.mean(self.y)
         self.varx = np.var(self.x)
         self.vary = np.var(self.y)
-        self.statlabel.setText("Mean in {0}: {2}\nMean in {1}: {3}\nVariance in {0}: {4}\nVariance in {1}: {5}\n".format(
+
+        self.fiteq = ''
+        for deg in reversed(range(len(self.w))):
+            self.fiteq += '{}{}'.format(self.w[deg], ('x^{} + '.format(deg) if deg else ''))
+
+        self.statlabel.setText(
+            "Mean in {0}: {2}\nMean in {1}: {3}\nVariance in {0}: {4}\nVariance in {1}: {5}\n".format(
             self.bcombobox.currentText(), self.lcombobox.currentText(), self.meanx, self.meany, self.varx, self.vary
         ))
 
