@@ -112,8 +112,10 @@ class MyWindow(QMainWindow):
         self.scatterwidget = pg.GraphicsLayoutWidget()
         self.scatterplot = self.scatterwidget.addPlot()
         # init the line for linear regression
-        self.linearregline = pg.InfiniteLine(pos=(10, 10), angle=45)
-        self.scatterplot.addItem(self.linearregline)
+        # self.linearregline = pg.InfiniteLine(pos=(10, 10), angle=45)
+        # self.scatterplot.addItem(self.linearregline)
+
+        self.polyregline = None
 
         self.scatterplotitem = pg.ScatterPlotItem(size=10, pen=pg.mkPen('w'), pxMode=True)
         self.scatterplot.addItem(self.scatterplotitem)
@@ -132,6 +134,29 @@ class MyWindow(QMainWindow):
         # convert into a position and angle representation for infinite line
         self.linearregline.setPos((0, self.w[0]))
         self.linearregline.setAngle(np.rad2deg(np.arctan(self.w[1])))
+
+    # perform polynomial regression to find a curve of best fit
+    # TODO: maybe leverage numpy more for the polynomial fit
+    def polynomialRegression(self, degree=2):
+        # only on positive degrees
+        if degree >= 1:
+            X = np.ones((1, *np.shape(self.x)))
+            # repeatedly stack the next power onto the X matrix
+            for n in range(degree):
+                X = np.vstack((X, X[-1] * self.x))
+            X = X.T
+            # now solve for the polynomial coefficients using the least squares method
+            y = np.reshape(self.y, (*np.shape(self.y), 1))
+            w = np.matmul(np.linalg.pinv(X), y)
+            # and plot a curve using said coefficients
+            x = np.linspace(min(self.x) - 0.5, max(self.x) + 0.5, 2000)
+            y = np.zeros(2000)
+            for n in range(degree+1):
+                y += (w[n] * np.power(x, n))
+            # clear the existing polynomial regression line if it exists and plot it
+            if self.polyregline:
+                self.scatterplot.removeItem(self.polyregline)
+            self.polyregline = self.scatterplot.plot(x, y, pen=pg.mkPen(pg.mkColor('#00E0E0'), width=3))
 
     def initStatComboBoxes(self):
         # create two comboboxes
@@ -272,6 +297,7 @@ class MyWindow(QMainWindow):
         btext = self.bcombobox.currentText()
 
         # clear items before drawing
+        # self.scatterplot.clear()
         self.scatterplotitem.clear()
         self.spots = list()
         # not a list comprension to make exception handling a bit easier
@@ -298,8 +324,8 @@ class MyWindow(QMainWindow):
         self.scatterplot.setXRange(min(self.x) - 0.5, max(self.x) + 0.5)
         self.scatterplot.setYRange(min(self.y) - 0.5, max(self.y) + 0.5)
 
-        self.linearRegression()
-
+        # self.linearRegression()
+        self.polynomialRegression(3)
         # also update the stats while we're here
         self.updateStats()
 
