@@ -133,14 +133,14 @@ class MyWindow(QMainWindow):
             self.lcombobox.addItem(elem)
             self.bcombobox.addItem(elem)
 
-        # add help tooltips when hovering menu items
+        # add help tooltips when hovering combobox items
         # TODO: format the tooltips better
         for i in range(self.lcombobox.count()):
             if self.lcombobox.itemText(i).lower() in self.statsglossary:
                 desc = self.statsglossary[self.lcombobox.itemText(i).lower()]['Definition']
                 self.lcombobox.setItemData(i, desc, Qt.ToolTipRole)
                 self.bcombobox.setItemData(i, desc, Qt.ToolTipRole)
-
+      
         # use the values from the settings file to determine the 
         # starting values for the boxes
         lindex = self.lcombobox.findText(self.defaultvals['ystat'])
@@ -155,6 +155,17 @@ class MyWindow(QMainWindow):
         # update the scatter plot when you change stats
         self.bcombobox.currentIndexChanged.connect(self.onStatSelect)
         self.lcombobox.currentIndexChanged.connect(self.onStatSelect)
+
+        # add tooltips for the comboboxes themselves as well
+        self.updateComboBoxHelpToolTip(self.lcombobox)
+        self.updateComboBoxHelpToolTip(self.bcombobox)
+
+    # updates the help tooltip when a given combobox is hovered
+    # needs to change based on what the currently selected combobox item is
+    def updateComboBoxHelpToolTip(self, cb):
+        if cb.currentText().lower() in self.statsglossary:
+            definition = self.statsglossary[cb.currentText().lower()]['Definition']
+            cb.setToolTip(definition)
 
     # intialize the combo box that's used to select the year for the dataset
     def initYearComboBox(self):
@@ -203,6 +214,9 @@ class MyWindow(QMainWindow):
         # update the defaultvals as well 
         self.defaultvals['xstat'] = self.bcombobox.currentText()
         self.defaultvals['ystat'] = self.lcombobox.currentText()
+        # and also the help tooltips
+        self.updateComboBoxHelpToolTip(self.lcombobox)
+        self.updateComboBoxHelpToolTip(self.bcombobox)
 
     # load in all of the teams logos from the logos directory
     # used to save precious file I/O
