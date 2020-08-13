@@ -295,10 +295,13 @@ class MyWindow(QMainWindow):
     # will return None if filter cannot be generated
     def generatePlayerFilterFunction(self, s):
         # check to see that only allowed symbols are being evaluated
-        allowed = ['>', '<', '==', '<=', '>=', 'and', 'or', 'not']
+        allowed = ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', 'in']
         # also team names are valid as well
         teams = self.teamcolors.keys()
-        words = s.replace(')', '').replace('(', '').split()
+        w = s
+        for symbol in [')', '(', ',']:
+            w = w.replace(symbol, ' ')
+        words = w.split()
         # keep track of encountered word so as to not double replace
         found_words = set()
         for word in words:
