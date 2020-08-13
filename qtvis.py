@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMa
     QFrame, QAbstractItemView, QLineEdit
 from PyQt5.QtCore import QMetaObject, Qt, QEvent, QLine
 from PyQt5.QtGui import QPainter, QPixmap, QColor
-# import PyQt5.QtWidgets
 import pyqtgraph as pg
 import scraper
 import json
@@ -42,7 +41,7 @@ class Tooltip(QLabel):
         # draw a translucent black overlay to darken the image
         self.painter.drawRect(0, 0, 150, 100)
         self.painter.fillRect(0, 0, 150, 100, QColor(0, 0, 0, 220))
-        # write some text in white
+        # write some text in white for the two stats being compared on the scatter plot
         self.painter.setPen(QColor(255, 255, 255))
         self.painter.drawText(5, 20, '{}'.format(player))
         stat1, stat2 = statnames
@@ -53,6 +52,8 @@ class Tooltip(QLabel):
         self.setPixmap(self.pixmap)
         self.setVisible(True)
 
+    # undraw the tooltip if it's being hovered over
+    # in order to make hovering over different points smoother
     def enterEvent(self, event):
         self.setVisible(False)
 
@@ -130,10 +131,8 @@ class MyWindow(QMainWindow):
     def initScatterPlot(self):
         self.scatterwidget = pg.GraphicsLayoutWidget()
         self.scatterplot = self.scatterwidget.addPlot()
-        # init the line for linear regression
-        # self.linearregline = pg.InfiniteLine(pos=(10, 10), angle=45)
-        # self.scatterplot.addItem(self.linearregline)
 
+        # line for polynomial regression
         self.polyregline = None
 
         self.scatterplotitem = pg.ScatterPlotItem(size=10, pen=pg.mkPen('w'), pxMode=True)
@@ -297,16 +296,23 @@ class MyWindow(QMainWindow):
     def generatePlayerFilterFunction(self, s):
         # check to see that only allowed symbols are being evaluated
         allowed = ['>', '<', '==', '<=', '>=', 'and', 'or', 'not']
+        # also team names are valid as well
+        teams = self.teamcolors.keys()
         words = s.replace(')', '').replace('(', '').split()
         # keep track of encountered word so as to not double replace
-        found_stats = set()
+        found_words = set()
         for word in words:
             # if its not an allowed symbol but rather a keyword, replace it in the original string
             # only do this once per keyword
-            if word not in allowed and (word.lower() in self.statsglossary or word.lower() == 'age'):
-                if word not in found_stats:
+            if word not in allowed and (word.lower() in self.statsglossary or word.lower() in ['age', 'team']):
+                if word not in found_words:
                     s = s.replace(word, 'v[\'{}\']'.format(word))
-                    found_stats.add(word)
+                    found_words.add(word)
+            # if it's a team name, make sure to enclose in quotations
+            elif word not in allowed and word in teams:
+                if word not in found_words:
+                    s = s.replace(word, '\'{}\''.format(word))
+                    found_words.add(word)
             # if it's not a float nor a keyword, return false
             elif word not in allowed:
                 try:
