@@ -6,7 +6,7 @@ import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
     QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout, \
-    QFrame, QAbstractItemView
+    QFrame, QAbstractItemView, QLineEdit
 from PyQt5.QtCore import QMetaObject, Qt, QEvent, QLine
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 # import PyQt5.QtWidgets
@@ -79,7 +79,7 @@ class MyWindow(QMainWindow):
             with open(filepath) as settingsfile:
                 self.defaultvals = json.load(settingsfile)
         else: 
-            self.defaultvals = {'season': '2019-2020', 'xstat': 'PTS', 'ystat': 'AST'}
+            self.defaultvals = {'season': '2019-2020', 'xstat': 'PTS', 'ystat': 'AST', 'filter': ''}
 
     # write the current settings to the file 
     def writeSettingsFile(self, filepath='data/json/settings.json'):
@@ -101,13 +101,18 @@ class MyWindow(QMainWindow):
         self.setCentralWidget(self.mainWidget)
 
         # init everything then draw
-        self.initComboBoxes()
-        self.initScatterPlot()
-        self.initLabels()
+        self.initGUIElements()
         self.drawPoints()
         self.manageLayout()
         self.initMenuBar()
    
+    # init all of the GUI elements
+    def initGUIElements(self):
+        self.initComboBoxes()
+        self.initScatterPlot()
+        self.initLabels()
+        self.initConsole()
+
     def initScatterPlot(self):
         self.scatterwidget = pg.GraphicsLayoutWidget()
         self.scatterplot = self.scatterwidget.addPlot()
@@ -124,16 +129,6 @@ class MyWindow(QMainWindow):
         # Tooltip stuff
         self.scattertooltip = Tooltip(self.scatterwidget, self.teampixmaps)
         self.scatterplotitem.scene().sigMouseMoved.connect(self.onHover)
-
-    # perform linear regression and find a line of best fit
-    def linearRegression(self):
-        # solve for w = [b m], where w = (X'X)^-1 * X'y = pinv(X) * y
-        X = np.vstack((np.ones(np.shape(self.x)), self.x)).T
-        y = np.reshape(self.y, (*np.shape(self.y), 1))
-        self.w = np.matmul(np.linalg.pinv(X), y)
-        # convert into a position and angle representation for infinite line
-        self.linearregline.setPos((0, self.w[0]))
-        self.linearregline.setAngle(np.rad2deg(np.arctan(self.w[1])))
 
     # perform polynomial regression to find a curve of best fit
     # TODO: maybe leverage numpy more for the polynomial fit
@@ -269,8 +264,18 @@ class MyWindow(QMainWindow):
     # initialize the console
     # this will be used to filter players
     def initConsole(self):
+        # for now just create a lineedit somewhere
+        self.console = QLineEdit()
+        self.filterstring = self.defaultvals['filter']
+        self.console.setText(self.filterstring)
+        self.console.editingFinished.connect(self.onConsoleEditingFinish)
 
-        pass
+    # when you press enter, update the filter string and redraw the points
+    # also update the filter in the settings file
+    def onConsoleEditingFinish(self):
+        self.filterstring = self.console.text()
+        self.drawPoints()
+        self.defaultvals['filter'] = self.filterstring
 
     # evaluate an input string and use that to generate a player filter function
     # filter will return true if player meets criteria and false otherwise
@@ -278,11 +283,16 @@ class MyWindow(QMainWindow):
     def generatePlayerFilterFunction(self, s):
         # check to see that only allowed symbols are being evaluated
         allowed = ['>', '<', '==', '<=', '>=', 'and', 'or', 'not']
-        words = s.strip(')').strip('(').split()
+        words = s.replace(')', '').replace('(', '').split()
+        # keep track of encountered word so as to not double replace
+        found_stats = set()
         for word in words:
             # if its not an allowed symbol but rather a keyword, replace it in the original string
+            # only do this once per keyword
             if word not in allowed and word.lower() in self.statsglossary:
-                s = s.replace(word, 'v[\'{}\']'.format(word))
+                if word not in found_stats:
+                    s = s.replace(word, 'v[\'{}\']'.format(word))
+                    found_stats.add(word)
             # if it's not a float nor a keyword, return false
             elif word not in allowed:
                 try:
@@ -290,6 +300,8 @@ class MyWindow(QMainWindow):
                 except:
                     print('rip')
                     return None
+        if not words:
+            return None
         # now define the function to be returned and return it
         def playerFilter(player):
             v = self.stats[player]
@@ -322,6 +334,8 @@ class MyWindow(QMainWindow):
                 self.lastpointedat.setSize(10)
             self.lastpointedat = None
 
+
+
     # draw the points depending on what categories are selected
     def drawPoints(self):
         ltext = self.lcombobox.currentText()
@@ -335,10 +349,13 @@ class MyWindow(QMainWindow):
         # generate the player filter used to sort out players
         # this will be hooked into user input at some point
         # TODO: needs to be tested however
-        playerFilter = self.generatePlayerFilterFunction('REB2 >= 3')
+        playerFilter = self.generatePlayerFilterFunction(self.filterstring)
         if not playerFilter:
             def playerFilter(player): return True
 
+        # if the player filter raises an exception, replace it with a default true function
+        playerFilter(next(iter(self.stats)))
+            
         # not a list comprension to make exception handling a bit easier
         for player in self.stats:
             try: 
@@ -394,6 +411,8 @@ class MyWindow(QMainWindow):
 
         self.grid.addLayout(self.lhbox, 1, 0)
         self.grid.addLayout(self.bhbox, 2, 1, alignment=Qt.AlignCenter)
+
+        self.grid.addWidget(self.console, 4, 0, 1, 2)
 
         self.mainWidget.setLayout(self.grid)
 
