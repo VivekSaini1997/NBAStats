@@ -14,6 +14,7 @@ import pyqtgraph as pg
 import scraper
 import json
 import os
+import collections
 
 # a class to encompass the tooltip displayed on hover of an element
 # sublclasses QLabel to make life as easy as possible
@@ -63,6 +64,7 @@ class MyWindow(QMainWindow):
         super(MyWindow, self).__init__()
         self.allstats = scraper.load_agg_jsons(range(1996, 2020), 'data/json/stats')
         self.readSettingsFile()
+        self.readTeamColors()
         self.selectSeason()
         self.loadLogos()
         self.loadStatHelp()
@@ -80,6 +82,18 @@ class MyWindow(QMainWindow):
                 self.defaultvals = json.load(settingsfile)
         else: 
             self.defaultvals = {'season': '2019-2020', 'xstat': 'PTS', 'ystat': 'AST', 'filter': ''}
+
+    # read in the team colors
+    # TODO: handle cases where a team color doesn't exist
+    # that would involve using a default dict
+    def readTeamColors(self, filepath='data/json/team_colors.json'):
+        if os.path.isfile(filepath):
+            with open(filepath) as colorsfile:
+                colors = json.load(colorsfile)
+        else:
+            colors = dict()
+        # convert to a default dict defaulting to dark gray interior, light gray exterior 
+        self.teamcolors = collections.defaultdict(lambda : ('#444444', '#CCCCCC'), colors)
 
     # write the current settings to the file 
     def writeSettingsFile(self, filepath='data/json/settings.json'):
@@ -289,7 +303,7 @@ class MyWindow(QMainWindow):
         for word in words:
             # if its not an allowed symbol but rather a keyword, replace it in the original string
             # only do this once per keyword
-            if word not in allowed and word.lower() in self.statsglossary:
+            if word not in allowed and (word.lower() in self.statsglossary or word.lower() == 'age'):
                 if word not in found_stats:
                     s = s.replace(word, 'v[\'{}\']'.format(word))
                     found_stats.add(word)
@@ -364,9 +378,10 @@ class MyWindow(QMainWindow):
                     # add a tiny bit of variance to the x and y so that they don't overlap
                     'x': self.stats[player][btext] + np.random.randn()/100, 
                     'y': self.stats[player][ltext] + np.random.randn()/100, 
-                    'brush': np.random.randint(0, 255),
+                    'brush': self.teamcolors[self.stats[player]['TEAM']][0],
+                    'pen': self.teamcolors[self.stats[player]['TEAM']][1],
                     'size': 10,
-                    'symbol': np.random.randint(0, 5),
+                    'symbol': 'o',
                     'data': {'player': player, 'stats': self.stats[player]}
                     })
             except:
