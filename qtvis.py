@@ -266,6 +266,36 @@ class MyWindow(QMainWindow):
             if filename.endswith('.gif'):
                 self.teampixmaps[filename[:3]] = QPixmap(logodir + filename)
 
+    # initialize the console
+    # this will be used to filter players
+    def initConsole(self):
+
+        pass
+
+    # evaluate an input string and use that to generate a player filter function
+    # filter will return true if player meets criteria and false otherwise
+    # will return None if filter cannot be generated
+    def generatePlayerFilterFunction(self, s):
+        # check to see that only allowed symbols are being evaluated
+        allowed = ['>', '<', '==', '<=', '>=', 'and', 'or', 'not']
+        words = s.strip(')').strip('(').split()
+        for word in words:
+            # if its not an allowed symbol but rather a keyword, replace it in the original string
+            if word not in allowed and word.lower() in self.statsglossary:
+                s = s.replace(word, 'v[\'{}\']'.format(word))
+            # if it's not a float nor a keyword, return false
+            elif word not in allowed:
+                try:
+                    float(word)
+                except:
+                    print('rip')
+                    return None
+        # now define the function to be returned and return it
+        def playerFilter(player):
+            v = self.stats[player]
+            return eval(s)
+        return playerFilter
+
     # on hover, update the item's tooltip
     # TODO: update this
     def onHover(self, pos):
@@ -301,22 +331,33 @@ class MyWindow(QMainWindow):
         # self.scatterplot.clear()
         self.scatterplotitem.clear()
         self.spots = list()
+        
+        # generate the player filter used to sort out players
+        # this will be hooked into user input at some point
+        # TODO: needs to be tested however
+        playerFilter = self.generatePlayerFilterFunction('REB2 >= 3')
+        if not playerFilter:
+            def playerFilter(player): return True
+
         # not a list comprension to make exception handling a bit easier
         for player in self.stats:
             try: 
-                self.spots.append({
-                # add a tiny bit of variance to the x and y so that they don't overlap
-                'x': self.stats[player][btext] + np.random.randn()/100, 
-                'y': self.stats[player][ltext] + np.random.randn()/100, 
-                'brush': np.random.randint(0, 255),
-                'size': 10,
-                'symbol': np.random.randint(0, 5),
-                'data': {'player': player, 'stats': self.stats[player]}
-                })
+                if playerFilter(player):
+                    self.spots.append({
+                    # add a tiny bit of variance to the x and y so that they don't overlap
+                    'x': self.stats[player][btext] + np.random.randn()/100, 
+                    'y': self.stats[player][ltext] + np.random.randn()/100, 
+                    'brush': np.random.randint(0, 255),
+                    'size': 10,
+                    'symbol': np.random.randint(0, 5),
+                    'data': {'player': player, 'stats': self.stats[player]}
+                    })
             except:
                 print(player)
 
         self.scatterplotitem.addPoints(self.spots)
+
+        
 
         # now resize the axes as neccessary to center the graph
         self.x = np.array([ p['x'] for p in self.spots ])
