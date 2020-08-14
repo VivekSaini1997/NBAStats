@@ -321,7 +321,6 @@ class MyWindow(QMainWindow):
                 try:
                     float(word)
                 except:
-                    print('rip')
                     return None
         if not words:
             return None
@@ -357,8 +356,6 @@ class MyWindow(QMainWindow):
                 self.lastpointedat.setSize(10)
             self.lastpointedat = None
 
-
-
     # draw the points depending on what categories are selected
     def drawPoints(self):
         ltext = self.lcombobox.currentText()
@@ -370,15 +367,24 @@ class MyWindow(QMainWindow):
         self.spots = list()
         
         # generate the player filter used to sort out players
+        # also output the existing filter to the console label
         # this will be hooked into user input at some point
         # TODO: needs to be tested however
         playerFilter = self.generatePlayerFilterFunction(self.filterstring)
+        self.consolelabel.setText(self.filterstring)
         if not playerFilter:
+            if self.filterstring:
+                self.consolelabel.setText("Unexpected word or symbol in input (make sure to have spaces around symbols)")
             def playerFilter(player): return True
 
         # if the player filter raises an exception, replace it with a default true function
-        playerFilter(next(iter(self.stats)))
-            
+        try:
+            playerFilter(next(iter(self.stats)))
+        except SyntaxError:
+            self.consolelabel.setText("Syntax error while parsing input")
+            self.filterstring = ''
+            def playerFilter(player): return True
+
         # not a list comprension to make exception handling a bit easier
         for player in self.stats:
             try: 
@@ -395,10 +401,7 @@ class MyWindow(QMainWindow):
                     })
             except:
                 print(player)
-
         self.scatterplotitem.addPoints(self.spots)
-
-        
 
         # now resize the axes as neccessary to center the graph
         self.x = np.array([ p['x'] for p in self.spots ])
@@ -436,7 +439,9 @@ class MyWindow(QMainWindow):
         self.grid.addLayout(self.lhbox, 1, 0)
         self.grid.addLayout(self.bhbox, 2, 1, alignment=Qt.AlignCenter)
 
-        self.grid.addWidget(self.console, 4, 0, 1, 2)
+        self.grid.addWidget(self.consolelabel, 4, 0, 1, 2)
+        self.grid.addWidget(self.console, 5, 0, 1, 2)
+
 
         self.mainWidget.setLayout(self.grid)
 
@@ -461,6 +466,7 @@ class MyWindow(QMainWindow):
     # initialize all of the labels
     def initLabels(self):
         self.statlabel = QLabel(self)
+        self.consolelabel = QLabel(self)
 
     def initMenuBar(self):
         # create a menubar at the top?
