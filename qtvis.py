@@ -6,7 +6,7 @@ import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow, \
     QLabel, QMenuBar, QMenu, QAction, QGridLayout, QSpacerItem, QComboBox, QHBoxLayout, \
-    QFrame, QAbstractItemView, QLineEdit
+    QFrame, QAbstractItemView, QLineEdit, QSlider
 from PyQt5.QtCore import QMetaObject, Qt, QEvent, QLine
 from PyQt5.QtGui import QPainter, QPixmap, QColor
 import pyqtgraph as pg
@@ -127,6 +127,7 @@ class MyWindow(QMainWindow):
         self.initScatterPlot()
         self.initLabels()
         self.initConsole()
+        self.initSliders()
 
     def initScatterPlot(self):
         self.scatterwidget = pg.GraphicsLayoutWidget()
@@ -147,6 +148,7 @@ class MyWindow(QMainWindow):
     # TODO: maybe leverage numpy more for the polynomial fit
     def polynomialRegression(self, degree=1):
         # only on positive degrees
+        degree = round(degree)
         if degree >= 1:
             X = np.ones((1, *np.shape(self.x)))
             # repeatedly stack the next power onto the X matrix
@@ -232,6 +234,22 @@ class MyWindow(QMainWindow):
     def initComboBoxes(self):
         self.initStatComboBoxes()
         self.initYearComboBox()
+
+    # initialize all of the sliders 
+    # for now only needed for determining polynomial regression degree
+    def initSliders(self):
+        self.polyregslider = QSlider(self, orientation=Qt.Horizontal)
+        self.polyregslider.setMinimum(1)
+        self.polyregslider.setMaximum(10)
+        self.polyregslider.setValue(2)
+        self.polyregslider.setTickInterval(1)
+        self.polyregslider.setGeometry(0, 0, 300, 10)
+        self.polyregslider.valueChanged.connect(self.onSliderValueChanged)
+
+    # listener for the slider
+    # performs polynomial regression depending on the slider value
+    def onSliderValueChanged(self):
+        self.polynomialRegression(self.polyregslider.value())
 
     # on year select, change the dataset, then draw the points
     def onYearSelect(self):
@@ -411,7 +429,7 @@ class MyWindow(QMainWindow):
         self.scatterplot.setYRange(min(self.y) - 0.5, max(self.y) + 0.5)
 
         # also draw the polynomial of best fit
-        self.polynomialRegression(3)
+        self.polynomialRegression(self.polyregslider.value())
         # also update the stats while we're here
         self.updateStats()
 
@@ -423,7 +441,8 @@ class MyWindow(QMainWindow):
         # self.grid.addWidget(self.lcombobox, 1, 0)
         self.grid.addWidget(self.scatterwidget, 1, 1)
         # self.grid.addWidget(self.bcombobox, 2, 1, alignment=Qt.AlignCenter)
-        self.grid.addWidget(self.statlabel, 3, 0, 1, 2)
+        self.grid.addWidget(self.statlabel, 3, 0, alignment=Qt.AlignLeft)
+        self.grid.addWidget(self.polyregslider, 3, 1, alignment=Qt.AlignRight)
         # self.grid.addWidget(self.helplabel, 4, 0, 1, 2)
 
         self.lhbox = QHBoxLayout()
