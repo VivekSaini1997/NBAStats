@@ -57,6 +57,55 @@ class Tooltip(QLabel):
     def enterEvent(self, event):
         self.setVisible(False)
 
+# circular buffer class
+# used to implement history for the console
+class CircularBuffer():
+
+    # initialize a buffer of a given fixed size
+    # and optionally default values to start at
+    def __init__(self, size, values=None):
+        self.start = 0
+        if values:
+            self.buf = values[:size] + [None] * (min(len(values), size) - size)
+            self.end = min(size, len(values)) % size
+        else:
+            self.buf = [None] * size
+            self.end = 0
+        self.pos = self.end
+
+    # append a value to the end of the buffer
+    # overwrite the starting value if neccessary
+    def append(self, val):
+        self.buf[self.end] = val
+        self.end = (self.end + 1) % len(self.buf) 
+        # if start == end, that means we have hit the max capacity and need 
+        # to overwrite the oldest value
+        if self.start == self.end:
+            self.start = (self.end + 1) % len(self.buf)
+        # reset the position to the end of the list
+        self.pos = self.end
+
+    # go up and down the history
+    # can't get the previous from the start or the next from the end
+    def getPrevious(self):
+        if self.pos != self.start:
+            self.pos = (self.pos - 1) % len(self.buf)
+        return self.buf[self.pos]
+
+    def getNext(self):
+        if self.pos != self.end:
+            self.pos = (self.pos + 1) % len(self.buf)
+        return self.buf[self.pos]
+
+    # serialize the elements into a list and return
+    def toList(self):
+        ret = list()
+        i = self.start
+        while(i != self.end):
+            ret.append(self.buf[i])
+            i = (i + 1) % len(self.buf)
+        return ret
+
 # my window subclasses QMainWindow
 # needs to in order to access the methods associated with the main window
 class MyWindow(QMainWindow):
@@ -360,7 +409,7 @@ class MyWindow(QMainWindow):
             # draw the box to the mouse location
             # to the left of the cursor if near the edge of the window
             # TODO: stop hardcoding the logo width and height
-            if pos.x() > self.size().width() - 260:
+            if pos.x() > self.scatterplot.width() - 160:
                 self.scattertooltip.setGeometry(pos.x() - 160, pos.y(), 150, 100)
             else:
                 self.scattertooltip.setGeometry(pos.x() + 10, pos.y(), 150, 100)
