@@ -72,6 +72,7 @@ class CircularBuffer():
             self.buf = [''] * size
             self.end = 0
         self.pos = self.end
+        # print(self.buf)
 
     # append a value to the end of the buffer
     # overwrite the starting value if neccessary
@@ -84,7 +85,8 @@ class CircularBuffer():
             self.start = (self.end + 1) % len(self.buf)
         # reset the position to the end of the list
         self.pos = self.end
-        print(self.buf)
+        # print(self.buf)
+        # print(self.toList())
 
     # go up and down the history
     # can't get the previous from the start or the next from the end
@@ -358,9 +360,9 @@ class MyWindow(QMainWindow):
     def initConsole(self):
         # for now just create a lineedit somewhere
         self.console = QLineEdit(self)
-        self.filterstring = self.defaultvals['filter']
-        self.consolebuffer = CircularBuffer(32, [self.filterstring])
-        self.console.setText(self.filterstring)
+        self.filterstring = self.defaultvals['filter'][-1]
+        self.consolebuffer = CircularBuffer(32, self.defaultvals['filter'])
+        # self.console.setText(self.filterstring)
         self.console.editingFinished.connect(self.onConsoleEditingFinish)
         self.console.installEventFilter(self)
 
@@ -369,8 +371,8 @@ class MyWindow(QMainWindow):
     def onConsoleEditingFinish(self):
         self.filterstring = self.console.text()
         self.drawPoints()
-        self.defaultvals['filter'] = self.filterstring
         self.consolebuffer.append(self.filterstring)
+        self.defaultvals['filter'] = self.consolebuffer.toList()
         self.console.setText('')
 
     # evaluate an input string and use that to generate a player filter function
@@ -584,7 +586,7 @@ class MyWindow(QMainWindow):
 
 def displayWindow():
     app = QApplication([])
-    # app.setStyle("Fusion")
+    app.setStyle("Fusion")
     win = MyWindow()
     win.show()
     sys.exit(app.exec_())
