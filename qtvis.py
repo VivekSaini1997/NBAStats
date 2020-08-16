@@ -66,10 +66,10 @@ class CircularBuffer():
     def __init__(self, size, values=None):
         self.start = 0
         if values:
-            self.buf = values[:size] + [None] * (min(len(values), size) - size)
+            self.buf = values[:size] + [''] * (min(len(values), size) - size)
             self.end = min(size, len(values)) % size
         else:
-            self.buf = [None] * size
+            self.buf = [''] * size
             self.end = 0
         self.pos = self.end
 
@@ -153,6 +153,11 @@ class MyWindow(QMainWindow):
     # an event filter
     # maybe useful in the future but not now lmao
     def eventFilter(self, src, event):
+        if src is self.console and event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Up:
+                txt = self.consolebuffer.getPrevious()
+                self.filterstring = txt
+                self.console.setText(txt)
         return False 
 
     def initGUI(self):
@@ -345,10 +350,12 @@ class MyWindow(QMainWindow):
     # this will be used to filter players
     def initConsole(self):
         # for now just create a lineedit somewhere
-        self.console = QLineEdit()
+        self.console = QLineEdit(self)
         self.filterstring = self.defaultvals['filter']
+        self.consolebuffer = CircularBuffer(32, [self.filterstring])
         self.console.setText(self.filterstring)
         self.console.editingFinished.connect(self.onConsoleEditingFinish)
+        self.console.installEventFilter(self)
 
     # when you press enter, update the filter string and redraw the points
     # also update the filter in the settings file
@@ -356,6 +363,7 @@ class MyWindow(QMainWindow):
         self.filterstring = self.console.text()
         self.drawPoints()
         self.defaultvals['filter'] = self.filterstring
+        self.consolebuffer.append(self.filterstring)
 
     # evaluate an input string and use that to generate a player filter function
     # filter will return true if player meets criteria and false otherwise
@@ -410,9 +418,9 @@ class MyWindow(QMainWindow):
             # to the left of the cursor if near the edge of the window
             # TODO: stop hardcoding the logo width and height
             if pos.x() > self.scatterplot.width() - 160:
-                self.scattertooltip.setGeometry(pos.x() - 160, pos.y(), 150, 100)
+                self.scattertooltip.setGeometry(int(pos.x() - 160), pos.y(), 150, 100)
             else:
-                self.scattertooltip.setGeometry(pos.x() + 10, pos.y(), 150, 100)
+                self.scattertooltip.setGeometry(int(pos.x() + 10), pos.y(), 150, 100)
             if self.lastpointedat is not None:
                 self.lastpointedat.setSize(10)
             p1[0].setSize(20)
@@ -568,7 +576,7 @@ class MyWindow(QMainWindow):
 
 def displayWindow():
     app = QApplication([])
-    app.setStyle("Fusion")
+    # app.setStyle("Fusion")
     win = MyWindow()
     win.show()
     sys.exit(app.exec_())
