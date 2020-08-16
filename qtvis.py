@@ -66,7 +66,7 @@ class CircularBuffer():
     def __init__(self, size, values=None):
         self.start = 0
         if values:
-            self.buf = values[:size] + [''] * (min(len(values), size) - size)
+            self.buf = values[:size] + [''] * (size - min(len(values), size))
             self.end = min(size, len(values)) % size
         else:
             self.buf = [''] * size
@@ -84,6 +84,7 @@ class CircularBuffer():
             self.start = (self.end + 1) % len(self.buf)
         # reset the position to the end of the list
         self.pos = self.end
+        print(self.buf)
 
     # go up and down the history
     # can't get the previous from the start or the next from the end
@@ -154,8 +155,14 @@ class MyWindow(QMainWindow):
     # maybe useful in the future but not now lmao
     def eventFilter(self, src, event):
         if src is self.console and event.type() == QEvent.KeyPress:
+            # if the upp arrow is pressed, move up in the history
             if event.key() == Qt.Key_Up:
                 txt = self.consolebuffer.getPrevious()
+                self.filterstring = txt
+                self.console.setText(txt)
+            # if the down arrow is pressed, move down
+            if event.key() == Qt.Key_Down:
+                txt = self.consolebuffer.getNext()
                 self.filterstring = txt
                 self.console.setText(txt)
         return False 
@@ -364,6 +371,7 @@ class MyWindow(QMainWindow):
         self.drawPoints()
         self.defaultvals['filter'] = self.filterstring
         self.consolebuffer.append(self.filterstring)
+        self.console.setText('')
 
     # evaluate an input string and use that to generate a player filter function
     # filter will return true if player meets criteria and false otherwise
