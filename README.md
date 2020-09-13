@@ -37,11 +37,11 @@ PTS > 5 and AST > 2
 ```
 To keep all players that played for either the Boston Celtics (BOS) or the Miami Heat (MIA), we could type:
 ```
-team in ('BOS', 'MIA')
+TEAM in (BOS, MIA)
 ```
 or:
 ```
-(team == 'BOS') or (team == 'MIA')
+(TEAM == BOS) or (TEAM == MIA)
 ```
 where the parantheses are optional and for example purposes only
 
