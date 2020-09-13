@@ -363,7 +363,7 @@ class MyWindow(QMainWindow):
         self.filterstring = self.defaultvals['filter'][-1]
         self.consolebuffer = CircularBuffer(32, self.defaultvals['filter'])
         # self.console.setText(self.filterstring)
-        self.console.editingFinished.connect(self.onConsoleEditingFinish)
+        self.console.returnPressed.connect(self.onConsoleEditingFinish)
         self.console.installEventFilter(self)
 
     # when you press enter, update the filter string and redraw the points
