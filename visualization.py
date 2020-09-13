@@ -545,7 +545,7 @@ class MyWindow(QMainWindow):
             self.fiteq += '{}{}'.format(self.w[deg], ('x^{} + '.format(deg) if deg else ''))
 
         self.statlabel.setText(
-            "Mean in {0}: {2}\nMean in {1}: {3}\nVariance in {0}: {4}\nVariance in {1}: {5}\n".format(
+            "Mean in {0}: {2:.3f}\nMean in {1}: {3:.3f}\nVariance in {0}: {4:.3f}\nVariance in {1}: {5:.3f}\n".format(
             self.bcombobox.currentText(), self.lcombobox.currentText(), self.meanx, self.meany, self.varx, self.vary
         ))
 
